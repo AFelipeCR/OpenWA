@@ -218,6 +218,8 @@ export interface IWhatsAppEngine {
 
   // Messaging - Basic
   sendTextMessage(chatId: string, text: string): Promise<MessageResult>;
+  editTextMessage(messageId: string, text: string): Promise<MessageResult>;
+  sendTextMessage(chatId: string, text: string): Promise<MessageResult>;
   sendImageMessage(chatId: string, media: MediaInput): Promise<MessageResult>;
   sendVideoMessage(chatId: string, media: MediaInput): Promise<MessageResult>;
   sendAudioMessage(chatId: string, media: MediaInput): Promise<MessageResult>;

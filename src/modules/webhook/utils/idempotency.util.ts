@@ -31,6 +31,7 @@ function hashData(data: Record<string, unknown>): string {
 export function generateIdempotencyKey(event: string, data: Record<string, unknown>): string {
   switch (event) {
     case 'message.received':
+    case 'message.edited':
     case 'message.sent':
       // Message ID is unique per message
       return `msg_${toStr(data.messageId) || toStr(data.id)}`;

@@ -278,6 +278,15 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     };
   }
 
+  async editTextMessage(messageId: string, text: string): Promise<MessageResult> {
+    this.ensureReady();
+    const msg = await this.client!.editMessageById(messageId, text);
+    return {
+      id: msg.id._serialized,
+      timestamp: msg.timestamp,
+    };
+  }
+
   async sendImageMessage(chatId: string, media: MediaInput): Promise<MessageResult> {
     return this.sendMediaMessage(chatId, media);
   }
