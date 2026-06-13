@@ -223,6 +223,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   }
 
   /**
+   * Emit message edited notification
+   */
+  emitMessageEdited(sessionId: string, message: Record<string, unknown>) {
+    this.emitToRooms(sessionId, 'message.edited', message);
+  }
+
+  /**
    * Emit message sent notification
    */
   emitMessageSent(sessionId: string, message: Record<string, unknown>) {

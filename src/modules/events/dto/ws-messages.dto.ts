@@ -13,6 +13,7 @@ export type WSServerMessageType = 'subscribed' | 'unsubscribed' | 'event' | 'err
 // Valid event types that can be subscribed to
 export const SUBSCRIBABLE_EVENTS = [
   'message.received',
+  'message.edited',
   'message.sent',
   'message.ack',
   'message.revoked',

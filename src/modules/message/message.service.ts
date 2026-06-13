@@ -2,10 +2,11 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SessionService } from '../session/session.service';
-import { SendTextMessageDto, SendMediaMessageDto, MessageResponseDto } from './dto';
+import { SendTextMessageDto, SendMediaMessageDto, MessageResponseDto, EditTextMessageDto } from './dto';
 import { MediaInput } from '../../engine/interfaces/whatsapp-engine.interface';
 import { Message, MessageDirection, MessageStatus } from './entities/message.entity';
 import { HookManager } from '../../core/hooks';
+import { WebhookService } from '../webhook/webhook.service';
 
 export interface GetMessagesOptions {
   chatId?: string;
@@ -20,6 +21,7 @@ export class MessageService {
     private readonly messageRepository: Repository<Message>,
     private readonly sessionService: SessionService,
     private readonly hookManager: HookManager,
+    private readonly webhookService: WebhookService,
   ) {}
 
   async sendText(sessionId: string, dto: SendTextMessageDto): Promise<MessageResponseDto> {
@@ -61,6 +63,71 @@ export class MessageService {
         { sessionId, result, input: finalDto },
         { sessionId, source: 'MessageService' },
       );
+
+      void this.webhookService.dispatch(sessionId, 'message.sent', finalDto as unknown as Record<string, unknown>);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      // Mark as failed
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+
+      // Execute hook on failure
+      await this.hookManager.execute(
+        'message:failed',
+        { sessionId, error: error instanceof Error ? error.message : String(error), input: finalDto },
+        { sessionId, source: 'MessageService' },
+      );
+
+      throw error;
+    }
+  }
+
+   async editText(sessionId: string, dto: EditTextMessageDto): Promise<MessageResponseDto> {
+    // Execute hook before sending - plugins can modify or block
+    const { continue: shouldContinue, data: hookData } = await this.hookManager.execute(
+      'message:editing',
+      { sessionId, input: dto, type: 'text' },
+      { sessionId, source: 'MessageService' },
+    );
+
+    if (!shouldContinue) {
+      throw new BadRequestException('Message editing blocked by plugin');
+    }
+
+    // Use potentially modified input
+    const finalDto = (hookData as { input: EditTextMessageDto }).input;
+
+    const engine = this.getEngine(sessionId);
+
+    // Save message as pending BEFORE sending
+    const message = await this.updateOutgoingMessage({
+      chatId: finalDto.chatId,
+      messageId: finalDto.messageId,
+      body: finalDto.text,
+      type: 'text',
+    });
+
+    try {
+      const result = await engine.editTextMessage(finalDto.messageId, finalDto.text);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      // Execute hook after successful send
+      await this.hookManager.execute(
+        'message:edited',
+        { sessionId, result, input: finalDto },
+        { sessionId, source: 'MessageService' },
+      );
+
+      void this.webhookService.dispatch(sessionId, 'message.edited', finalDto as unknown as Record<string, unknown>);
 
       return {
         messageId: result.id,
@@ -441,6 +508,28 @@ export class MessageService {
       timestamp: data.timestamp,
       status: data.status ?? MessageStatus.PENDING,
     });
+    return this.messageRepository.save(message);
+  }
+
+  private async updateOutgoingMessage(
+    data: {
+      waMessageId?: string;
+      chatId: string;
+      messageId: string;
+      body: string;
+      type: string;
+      timestamp?: number;
+      status?: MessageStatus;
+    },
+  ): Promise<Message> {
+
+    const message = await this.messageRepository.findOneBy({ waMessageId: data.messageId });
+
+    if (!message) {
+        throw new Error(`Mensaje ID ${data.messageId} not found.`);
+    }
+
+    message.body = data.body;
     return this.messageRepository.save(message);
   }
 

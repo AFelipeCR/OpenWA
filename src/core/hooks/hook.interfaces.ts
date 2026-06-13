@@ -15,6 +15,8 @@ export type HookEvent =
   | 'message:received'
   | 'message:sending'
   | 'message:sent'
+  | 'message:editing'
+  | 'message:edited'
   | 'message:failed'
   | 'message:ack'
   // Webhook lifecycle

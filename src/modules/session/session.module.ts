@@ -9,6 +9,6 @@ import { WebhookModule } from '../webhook/webhook.module';
   imports: [TypeOrmModule.forFeature([Session], 'data'), forwardRef(() => WebhookModule)],
   controllers: [SessionController],
   providers: [SessionService],
-  exports: [SessionService],
+  exports: [SessionService, forwardRef(() => WebhookModule)],
 })
 export class SessionModule {}

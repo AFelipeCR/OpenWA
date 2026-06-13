@@ -21,6 +21,34 @@ export class SendTextMessageDto {
   text: string;
 }
 
+export class EditTextMessageDto {
+  @ApiProperty({
+    description: 'WhatsApp chat ID (phone@c.us for individual, groupId@g.us for groups)',
+    example: '628123456789@c.us',
+  })
+  @IsString()
+  @IsNotEmpty()
+  chatId: string;
+
+  @ApiProperty({
+    description: 'a',
+    example: 'a',
+  })
+  @IsString()
+  @IsNotEmpty()
+  messageId: string;
+
+  @ApiProperty({
+    description: 'Text message content',
+    example: 'Hello from OpenWA!',
+    maxLength: 4096,
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4096)
+  text: string;
+}
+
 export class SendMediaMessageDto {
   @ApiProperty({
     description: 'WhatsApp chat ID',

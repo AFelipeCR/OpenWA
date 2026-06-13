@@ -28,6 +28,7 @@ import './Webhooks.css';
 const availableEventNames = [
   'message.received',
   'message.sent',
+  'message.edited',
   'session.connected',
   'session.disconnected',
   'session.qr',
