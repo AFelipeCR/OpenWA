@@ -6,6 +6,7 @@ import { SendTextMessageDto, SendMediaMessageDto, MessageResponseDto, EditTextMe
 import { MediaInput } from '../../engine/interfaces/whatsapp-engine.interface';
 import { Message, MessageDirection, MessageStatus } from './entities/message.entity';
 import { HookManager } from '../../core/hooks';
+import { WebhookService } from '../webhook/webhook.service';
 
 export interface GetMessagesOptions {
   chatId?: string;
@@ -20,6 +21,7 @@ export class MessageService {
     private readonly messageRepository: Repository<Message>,
     private readonly sessionService: SessionService,
     private readonly hookManager: HookManager,
+    private readonly webhookService: WebhookService,
   ) {}
 
   async sendText(sessionId: string, dto: SendTextMessageDto): Promise<MessageResponseDto> {
@@ -61,6 +63,8 @@ export class MessageService {
         { sessionId, result, input: finalDto },
         { sessionId, source: 'MessageService' },
       );
+
+      void this.webhookService.dispatch(sessionId, 'message.sent', finalDto as unknown as Record<string, unknown>);
 
       return {
         messageId: result.id,
@@ -122,6 +126,8 @@ export class MessageService {
         { sessionId, result, input: finalDto },
         { sessionId, source: 'MessageService' },
       );
+
+      void this.webhookService.dispatch(sessionId, 'message.edited', finalDto as unknown as Record<string, unknown>);
 
       return {
         messageId: result.id,
