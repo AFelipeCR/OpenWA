@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Client, LocalAuth, MessageMedia, MessageTypes, WAState, type Message } from 'whatsapp-web.js';
+import { LocalAuth, MessageMedia, MessageTypes, WAState, type Message } from 'whatsapp-web.js';
 import * as qrcode from 'qrcode';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -54,6 +54,7 @@ import {
   coerceDeclaredSize,
 } from './inbound-media-cap';
 import { ConcurrencyLimiter } from './concurrency-limiter';
+import { BetterClient } from './custom/client.custom';
 
 /**
  * Map a whatsapp-web.js MessageAck integer to the neutral DeliveryStatus.
@@ -187,7 +188,7 @@ export function extractLinkedParentJID(groupMetadata?: GroupMetadataRaw): string
 }
 
 export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngine {
-  private client: Client | null = null;
+  private client: BetterClient | null = null;
   private status: EngineStatus = EngineStatus.DISCONNECTED;
   private qrCode: string | null = null;
   private phoneNumber: string | null = null;
@@ -293,7 +294,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         this.logger.log(`Using auth timeout ${authTimeoutMs}ms`);
       }
 
-      this.client = new Client({
+      this.client = new BetterClient({
         authStrategy: new LocalAuth({
           clientId: this.config.sessionId,
           dataPath: path.resolve(this.config.sessionDataPath),
@@ -621,7 +622,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     this.emit('stateChanged', status);
   }
 
-  private beginClientTeardown(): Client | null {
+  private beginClientTeardown(): BetterClient | null {
     const client = this.client;
     if (!client) return null;
 
@@ -634,7 +635,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     return client;
   }
 
-  private finishClientTeardown(client: Client): void {
+  private finishClientTeardown(client: BetterClient): void {
     if (this.client === client) {
       this.client = null;
     }
@@ -757,6 +758,9 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
   async editTextMessage(messageId: string, text: string): Promise<MessageResult> {
     this.ensureReady();
     const msg = await this.client!.editMessageById(messageId, text);
+    if(!msg){
+      throw new Error("Message not found.");
+    }
     return {
       id: msg.id._serialized,
       timestamp: msg.timestamp,
