@@ -7,14 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-06-25
+
 ### Fixed
 
-- WebSocket events are now delivered exactly once to a client subscribed to overlapping rooms (for example both a specific event and the `*` wildcard for the same session). The real-time fan-out previously sent one copy per matching room, so such a client could receive the same event two to four times. The bundled dashboard was unaffected (its pages subscribe to disjoint rooms); this fixes duplicate delivery for custom WebSocket clients.
-- `session.authenticated` and `session.disconnected` are now emitted over the WebSocket (with `{ phone, pushName }` and `{ reason }` respectively), matching the existing webhook payloads. They were advertised as subscribable but were only ever delivered via webhooks, so socket subscribers never received them.
+- WebSocket events are now delivered exactly once to a client subscribed to overlapping rooms (for example both a specific event and the `*` wildcard for the same session). The real-time fan-out previously sent one copy per matching room, so such a client could receive the same event two to four times. The bundled dashboard was unaffected (its pages subscribe to disjoint rooms); this fixes duplicate delivery for custom WebSocket clients. (#468)
+- `session.authenticated` and `session.disconnected` are now emitted over the WebSocket (with `{ phone, pushName }` and `{ reason }` respectively), matching the existing webhook payloads. They were advertised as subscribable but were only ever delivered via webhooks, so socket subscribers never received them. (#468)
+- The infrastructure status endpoint (`GET /api/infra/status`) now reports the actual media storage path — it reads `storage.localPath` (default `./data/media`), the key the storage service uses — instead of a non-existent `storage.path` key that always reported `./uploads`. (#472)
+- The JavaScript client SDK's `timestamp` fields (`MessageResponse`, `MessageRecord`) are documented as Unix **seconds** (the real passed-through value, previously mislabelled milliseconds), and the PHP SDK's `Client::request()` is correctly typed (`mixed $body): mixed`). (#472)
 
 ### Changed
 
-- The WebSocket `group.join` / `group.leave` / `group.update` events are no longer accepted as socket subscriptions — they have no engine source and were never delivered on the socket. Subscribing to one now returns a clear validation error instead of silently never delivering. They remain reserved on the webhook side. Webhook subscriptions are unaffected.
+- The WebSocket `group.join` / `group.leave` / `group.update` events are no longer accepted as socket subscriptions — they have no engine source and were never delivered on the socket. Subscribing to one now returns a clear validation error instead of silently never delivering. They remain reserved on the webhook side. Webhook subscriptions are unaffected. (#468)
+
+### Documentation
+
+- The `docs/` set was reconciled against the v0.7.3 implementation — API specification and collection, operational runbooks, troubleshooting, system architecture, security, database, dashboard, SDK, and plugin docs — correcting drift accumulated across releases. (#471)
 
 ## [0.7.3] - 2026-06-25
 
