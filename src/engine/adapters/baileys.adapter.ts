@@ -480,6 +480,10 @@ export class BaileysAdapter implements IWhatsAppEngine {
     };
   }
 
+  async editTextMessage(messageId: string, text: string): Promise<MessageResult> {
+    throw new Error("Baileys' Edit message not implemented yet");
+  }
+
   async checkNumberExists(number: string): Promise<boolean> {
     return (await this.getNumberId(number)) !== null;
   }
