@@ -62,7 +62,7 @@ services:
       - FOWNER
       - SETGID # gosu: drop to the openwa group
       - SETUID # gosu: drop to the openwa user
-    read_only: true
+    read_only: false
     tmpfs:
       - /tmp
     # Per-container PID ceiling (writes the cgroup pids.max). A fork-bomb guard, NOT an allocation —
@@ -82,6 +82,7 @@ services:
     expose:
       - '2785'
     environment:
+      - AUTO_START_SESSIONS=${AUTO_START_SESSIONS:-true}
       # Core
       - NODE_ENV=${NODE_ENV:-production}
       # Writable HOME on tmpfs so Chromium's HOME-relative writes don't hit the read_only rootfs
@@ -166,6 +167,9 @@ services:
       - PLUGINS_DIR=${PLUGINS_DIR:-/app/data/plugins}
       # Security
       - API_MASTER_KEY=${API_MASTER_KEY:-}
+      # SSRF
+      - WEBHOOK_SSRF_PROTECT=${WEBHOOK_SSRF_PROTECT:-true}
+      - SSRF_ALLOWED_HOSTS=${SSRF_ALLOWED_HOSTS:-}
       # Docker socket proxy (openwa-api never touches /var/run/docker.sock directly)
       - DOCKER_HOST=tcp://docker-proxy:2375
     volumes:
