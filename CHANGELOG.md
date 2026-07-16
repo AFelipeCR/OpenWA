@@ -11,9 +11,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+### Security
+
+## [0.8.18] - 2026-07-17
+
+### Added
+
+### Changed
+
 - **Send-response semantics clarified (docs only).** The send endpoints' Swagger response and `docs/06` now state explicitly that `201` means the gateway accepted the message for sending — not that the recipient received it — and that WhatsApp does not reject an unregistered recipient synchronously, so a message to a number that is not on WhatsApp still returns `201` with a `messageId` but never delivers. `GET /sessions/{id}/contacts/check/{number}` is cross-referenced as the way to pre-validate a new recipient, and the async message `status` lifecycle (`sent → delivered → read`, or `failed`) as the source of real delivery state. No behavior change. Refs #738.
 
 ### Fixed
+
+- **Inbound media download, message ids, acks, and reply quoting restored**
+  (whatsapp-web.js `id._serialized` → `id.$1` rename). WhatsApp Web build 2.3000.x
+  (rolled out ~2026-07-14) renamed the internal serialized message-id property
+  from `id._serialized` to `id.$1`, which broke whatsapp-web.js 1.34.7's
+  `downloadMedia()`, message-id extraction, ack tracking, and quoted-message
+  resolution for every bot at once. The production Docker image now backports
+  upstream fix [#201832](https://github.com/wwebjs/whatsapp-web.js/pull/201832)
+  (`Base._normalizeId`) into the installed dependency at build time via
+  `scripts/patch-wwebjs-201832.js`. The patcher applies the real upstream diff
+  (with a loud-fail guard against version skew) and auto-disables the moment a
+  future whatsapp-web.js release ships the fix, so it is a stopgap, not a fork.
+  Fixes #747.
+
+- **Source installs get the whatsapp-web.js backport too, not just the Docker image.**
+  `npm install` now applies it from `postinstall`, so the local-development setup in
+  the README is no longer stuck with broken media downloads. It is best-effort
+  there: a machine without a `patch` binary (Windows outside WSL) or a
+  Baileys-only setup gets a warning rather than a failed install. The image build
+  still treats the same failure as fatal.
+
+- **Reactions stay attributable on the renamed-id builds too.** `Reaction` assigns
+  its keys straight through, so it is the one structure upstream's normalization
+  doesn't reach; the adapter now reads the renamed field directly and falls back to
+  the empty no-id sentinel instead of passing `undefined` on.
+
+- **A reaction with no message id no longer updates an arbitrary message.**
+  `applyReaction` looked the message up by an id that could be `undefined`, and
+  TypeORM drops an undefined condition from the where-clause rather than matching
+  nothing — so the lookup found an unrelated row and emitted its reactions under
+  the incoming event. The id is now checked before the query. Latent since
+  reactions were added; only reachable when an engine can't resolve the id.
 
 - **Engine start timeouts now return a diagnostic 504 instead of a bare 500.** Two
   `POST /api/sessions/:id/start` failure modes previously escaped to NestJS's default handler as a
