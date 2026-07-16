@@ -1482,8 +1482,9 @@ flowchart LR
 | **Standard** | PostgreSQL | Local | Redis | 5-10 | 2GB | Small business |
 | **Enterprise** | PostgreSQL | S3/MinIO | Redis | 10+ | 4GB+ | Agency, high volume |
 
-> Session counts are guidance only — there is **no enforced session cap** in the code
-> (no `MAX_SESSIONS` env var is read anywhere).
+> Session counts are guidance only by default. Set `MAX_CONCURRENT_SESSIONS` to a positive integer
+> to cap concurrently running or initializing engines; the default `0` keeps the historical
+> unlimited behavior.
 
 ### Configuration Examples
 
@@ -1541,8 +1542,8 @@ S3_BUCKET=openwa-media
 S3_REGION=ap-southeast-1
 S3_ACCESS_KEY_ID=xxx
 S3_SECRET_ACCESS_KEY=xxx
-S3_ENDPOINT=https://s3.ap-southeast-1.amazonaws.com
-# For MinIO, point S3_ENDPOINT at it (path-style is always on):
+# AWS S3 needs NO endpoint (one is derived from the region) — leave S3_ENDPOINT unset for it. An
+# endpoint is only for S3-compatible stores (MinIO, R2, …), where setting it also enables path-style:
 # S3_ENDPOINT=http://minio:9000
 
 # Cache

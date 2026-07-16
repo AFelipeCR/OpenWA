@@ -2,12 +2,14 @@ import { Controller, Post, Get, Param, Body, Query, HttpCode, HttpStatus, Put } 
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { MessageService } from './message.service';
 import { BulkMessageService } from './bulk-message.service';
+import { SendTextMessageDto, SendMediaMessageDto, SendAudioMessageDto, MessageResponseDto } from './dto';
 import { SendTemplateMessageDto } from './dto/send-template.dto';
 import { SendTextMessageDto, SendMediaMessageDto, MessageResponseDto, EditTextMessageDto } from './dto';
 import { SendBulkMessageDto, BulkMessageResponseDto } from './dto/bulk-message.dto';
 import {
   SendLocationDto,
   SendContactDto,
+  SendPollDto,
   ReplyMessageDto,
   ForwardMessageDto,
   ReactMessageDto,
@@ -166,7 +168,7 @@ export class MessageController {
   })
   async sendAudio(
     @Param('sessionId') sessionId: string,
-    @Body() dto: SendMediaMessageDto,
+    @Body() dto: SendAudioMessageDto,
   ): Promise<MessageResponseDto> {
     return this.messageService.sendAudio(sessionId, dto);
   }
@@ -233,6 +235,19 @@ export class MessageController {
     @Body() dto: SendMediaMessageDto,
   ): Promise<MessageResponseDto> {
     return this.messageService.sendSticker(sessionId, dto);
+  }
+
+  @Post('send-poll')
+  @RequireRole(ApiKeyRole.OPERATOR)
+  @ApiOperation({ summary: 'Send a native WhatsApp poll' })
+  @ApiParam({ name: 'sessionId', description: 'Session ID' })
+  @ApiResponse({
+    status: 201,
+    description: 'Poll sent',
+    type: MessageResponseDto,
+  })
+  async sendPoll(@Param('sessionId') sessionId: string, @Body() dto: SendPollDto): Promise<MessageResponseDto> {
+    return this.messageService.sendPoll(sessionId, dto);
   }
 
   @Post('reply')

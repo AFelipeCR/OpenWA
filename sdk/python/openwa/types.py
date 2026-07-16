@@ -107,6 +107,7 @@ class SendMediaRequest(TypedDict, total=False):
     mimetype: str
     filename: str
     caption: str
+    ptt: bool  # audio only: send as a WhatsApp voice note (PTT)
 
 
 class SendLocationRequest(TypedDict, total=False):
@@ -501,8 +502,10 @@ class StatusRecord(TypedDict, total=False):
 
 
 class SendTextStatusRequest(TypedDict, total=False):
-    # text required; backgroundColor (hex, e.g. #25D366) and font optional.
+    # text and recipients required; backgroundColor (hex, e.g. #25D366) and font optional.
     text: str
+    # Recipient JIDs the status is addressed to (required by the server; empty -> 400).
+    recipients: list[str]
     backgroundColor: str
     font: int
 
@@ -512,12 +515,15 @@ class StatusMediaInput(TypedDict, total=False):
 
     url: str
     base64: str
+    mimetype: str
 
 
 class SendImageStatusRequest(TypedDict, total=False):
     """Server expects a nested ``{ image: { url|base64 } }`` body."""
 
     image: StatusMediaInput
+    # Recipient JIDs the status is addressed to (required by the server; empty -> 400).
+    recipients: list[str]
     caption: str
 
 
@@ -525,6 +531,8 @@ class SendVideoStatusRequest(TypedDict, total=False):
     """Server expects a nested ``{ video: { url|base64 } }`` body."""
 
     video: StatusMediaInput
+    # Recipient JIDs the status is addressed to (required by the server; empty -> 400).
+    recipients: list[str]
     caption: str
 
 
@@ -671,3 +679,72 @@ class SendProductRequest(TypedDict, total=False):
 class SendCatalogRequest(TypedDict, total=False):
     chatId: Jid
     body: str
+
+
+# ── Search ────────────────────────────────────────────────────────
+
+# `q` is required; the remaining fields are optional. `from` is a Python
+# keyword, so the optional keys are declared via the functional TypedDict form
+# (mirrors ListMessagesQuery / MessageRecord). `dateFrom` / `dateTo` are
+# epoch-ms; the backend binds them against messages.timestamp (epoch-seconds),
+# dividing by 1000 internally.
+class _SearchQueryRequired(TypedDict):
+    q: str
+
+
+_SearchQueryOptional = TypedDict(
+    "_SearchQueryOptional",
+    {
+        "sessionId": str,
+        "chatId": Jid,
+        "direction": MessageDirection,
+        "type": str,
+        "from": Jid,
+        "dateFrom": int,
+        "dateTo": int,
+        "limit": int,
+        "offset": int,
+    },
+    total=False,
+)
+
+
+class SearchQueryParams(_SearchQueryRequired, _SearchQueryOptional):
+    """Query for ``GET /search``. ``q`` is required; every other field optional."""
+
+
+# `from` is a Python keyword → functional form for the required keys. The builtin
+# provider returns waMessageId/snippet as "" when absent (always str, never null);
+# `score` is provider-dependent (builtin always returns it) → optional.
+_SearchHitRequired = TypedDict(
+    "_SearchHitRequired",
+    {
+        "messageId": str,
+        "waMessageId": str,
+        "sessionId": str,
+        "chatId": Jid,
+        "body": str,
+        "snippet": str,
+        "timestamp": int,
+        "type": str,
+        "direction": MessageDirection,
+        "from": Jid,
+    },
+)
+
+
+class SearchHit(_SearchHitRequired, total=False):
+    score: float
+
+
+class SearchResults(TypedDict):
+    """Payload returned by ``GET /search``.
+
+    ``total`` is a bounded exact count for pagination; ``provider`` is the id of
+    the search provider that answered (e.g. ``builtin-fts``).
+    """
+
+    hits: list[SearchHit]
+    total: int
+    tookMs: int
+    provider: str

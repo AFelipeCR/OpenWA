@@ -82,10 +82,13 @@ export async function request<T>(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  // Auth and JSON content-type WIN over caller-supplied defaults/per-request headers — the SDK only
+  // ever sends a JSON body, and this matches the Python and PHP SDKs (which force JSON) and the
+  // documented "JSON headers win" contract. Put them last so a defaultHeaders Content-Type can't clobber.
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...config.defaultHeaders,
     ...options.headers,
+    'Content-Type': 'application/json',
     'X-API-Key': config.apiKey,
   };
 
@@ -125,5 +128,26 @@ export async function request<T>(
     return JSON.parse(text) as T;
   } catch {
     return text as unknown as T;
+  }
+}
+
+const LOCALHOST_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+/**
+ * Warn (NOT throw) when a URL is `http://` and the host is not localhost. The API key is sent as
+ * an `X-API-Key` header on every request — over plaintext http to a non-local host that's cleartext
+ * on the wire. Warning (not refusing) keeps local dev and TLS-terminating-proxy topologies working.
+ */
+export function warnIfInsecureHttpUrl(url: string, label = 'baseUrl'): void {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' && !LOCALHOST_HOSTS.has(parsed.hostname.toLowerCase())) {
+      console.warn(
+        `[OpenWA SDK] ${label} uses an insecure http:// URL (host: ${parsed.hostname}). ` +
+          'The API key will be sent in cleartext. Use https:// in production.',
+      );
+    }
+  } catch {
+    // Unparseable — the request will fail downstream with a clear error.
   }
 }
